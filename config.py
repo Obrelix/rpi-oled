@@ -46,6 +46,7 @@ FULL_CONTRAST = 255
 PIXEL_SHIFT_INTERVAL_SEC = 60     # cycle origin offset every minute
 PIXEL_SHIFT_SEQUENCE = [(0, 0), (1, 0), (1, 1), (0, 1)]
 
+# Presses between SHORT_PRESS_MAX_SEC and LONG_PRESS_MIN_SEC are ignored as ambiguous.
 SHORT_PRESS_MAX_SEC = 0.4         # <400ms = short
 LONG_PRESS_MIN_SEC = 0.8          # >800ms = long
 
@@ -54,7 +55,7 @@ ERROR_TOAST_DURATION_SEC = 3.0
 
 # ---------- Pages ----------
 
-PAGE_MARGIN = 6                   # px — reserves headroom for pixel shift
+PAGE_MARGIN = 6                   # px — 1px pixel shift + 5px layout safety
 
 MENU_ITEMS = ["Restart active LED", "Reboot Pi", "Shutdown Pi", "Cancel"]
 MENU_CANCEL_INDEX = 3             # short-press on Cancel returns to PAGE
