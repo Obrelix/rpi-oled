@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 
 from display import pages
+from display import menu
 
 
 def _canvas():
@@ -105,3 +106,28 @@ def test_page_handles_missing_optional_data():
                 pages.NetworkPage, pages.ServicesPage, pages.ClockPage):
         img, draw = _canvas()
         cls().render(draw, minimal)  # must not raise
+
+
+def test_render_menu_highlights_selected_item():
+    img, draw = _canvas()
+    menu.render_menu(draw, items=["A", "B", "C", "D"], selected_idx=1)
+    assert _pixels_lit(img) > 20
+
+
+def test_render_menu_with_no_items_draws_nothing_but_title():
+    img, draw = _canvas()
+    menu.render_menu(draw, items=[], selected_idx=0)
+    # title should still be drawn
+    assert _pixels_lit(img) > 0
+
+
+def test_render_confirm_shows_action_name():
+    img, draw = _canvas()
+    menu.render_confirm(draw, action_name="Reboot Pi")
+    assert _pixels_lit(img) > 30
+
+
+def test_render_toast_displays_message():
+    img, draw = _canvas()
+    menu.render_toast(draw, message="Restarted Voidex")
+    assert _pixels_lit(img) > 10
