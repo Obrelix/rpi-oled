@@ -1,0 +1,17 @@
+[Unit]
+Description=RPi OLED - status display daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/home/obrelix/rpi-oled/venv/bin/python /home/obrelix/rpi-oled/main.py
+WorkingDirectory=/home/obrelix/rpi-oled
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=10
+StartLimitIntervalSec=300
+
+[Install]
+WantedBy=multi-user.target
