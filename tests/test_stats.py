@@ -143,3 +143,25 @@ def test_parse_meminfo_empty_input_returns_zeros():
     assert result["ram_used_mb"] == 0
     assert result["ram_percent"] == 0.0
     assert result["swap_percent"] == 0.0
+
+
+def test_stats_reader_survives_malformed_proc_content(tmp_path):
+    """Malformed /proc content (non-numeric where ints expected) must
+    not crash StatsReader.get()."""
+    bad_net = tmp_path / "net_dev"
+    bad_net.write_text("garbled garbage wlan0: not-a-number also-not\n")
+    bad_stat = tmp_path / "stat"
+    bad_stat.write_text("cpu hello world\n")
+
+    reader = stats.StatsReader()
+    reader.MEMINFO_PATH = FIXTURES / "meminfo.txt"
+    reader.STAT_PATH = bad_stat
+    reader.THERMAL_PATH = tmp_path / "nonexistent"  # triggers _read_file fallback
+    reader.NET_DEV_PATH = bad_net
+
+    with patch("subprocess.run", side_effect=OSError("no df")):
+        # Must not raise
+        result = reader.get(iface="wlan0")
+
+    assert result["net"] is None  # fallback
+    assert result["cpu_percent"] == 0.0  # fallback

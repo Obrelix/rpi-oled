@@ -144,16 +144,16 @@ class StatsReader:
 
         # --- disk ---
         df_output = self._safe_run(["df", "-k", "/"], fallback="")
-        disk = parse_df(df_output) if df_output else {"used_mb": 0, "total_mb": 0, "percent": 0}
+        disk = self._try_parse(parse_df, df_output, fallback={"used_mb": 0, "total_mb": 0, "percent": 0}) if df_output else {"used_mb": 0, "total_mb": 0, "percent": 0}
 
         # --- network ---
         net_content = self._read_file(self.NET_DEV_PATH)
-        net = parse_net_bytes(net_content, iface) if net_content else None
+        net = self._try_parse(parse_net_bytes, net_content, iface, fallback=None) if net_content else None
 
         # --- CPU (delta between consecutive snapshots) ---
         now_stat = self._read_file(self.STAT_PATH)
         if self._last_stat and now_stat:
-            cpu_pct = parse_cpu_percent(self._last_stat, now_stat)
+            cpu_pct = self._try_parse(parse_cpu_percent, self._last_stat, now_stat, fallback=0.0)
         else:
             cpu_pct = 0.0
         if now_stat:
@@ -166,6 +166,16 @@ class StatsReader:
         try:
             return path.read_text()
         except OSError:
+            return fallback
+
+    @staticmethod
+    def _try_parse(fn, *args, fallback):
+        """Call fn(*args), return fallback if it raises ValueError or IndexError.
+        Used for parsers that cast /proc fields to int — malformed content
+        would otherwise crash the entire stats loop."""
+        try:
+            return fn(*args)
+        except (ValueError, IndexError):
             return fallback
 
     @staticmethod
