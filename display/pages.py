@@ -64,12 +64,13 @@ class HomePage(Page):
         draw.text((x0, y + 14), f"host: {host_data.get('hostname') or '--'}", font=f, fill=1)
         draw.text((x0, y + 24), f"ip:   {host_data.get('ip') or '--'}", font=f, fill=1)
 
-        # Footer stats
+        # Footer stats — Pillow default font is ~10 px tall, plus 1 px
+        # pixel-shift safety, so draw at y=52 to keep the baseline visible.
         cpu = stats.get("cpu_percent", 0.0)
         mem_pct = stats["mem"].get("ram_percent", 0.0)
         temp = stats.get("temp_c")
         footer = f"cpu {int(cpu)}%  mem {int(mem_pct)}%  " + _or_dash(temp, "{:.0f}\u00b0C")
-        draw.text((x0, 64 - 10), footer, font=f, fill=1)
+        draw.text((x0, 52), footer, font=f, fill=1)
 
 
 # ---------- Page 1: CPU ----------
@@ -120,6 +121,9 @@ class NetworkPage(Page):
     title = "NETWORK"
 
     def render(self, draw: ImageDraw.ImageDraw, data: dict) -> None:
+        # Five data lines do not fit at 10 px/line on a 64 px tall canvas,
+        # so we drop the `link` row (often "Unknown!" on wifi anyway) and
+        # keep iface / ip / ssid / rx-tx on 11 px rows.
         f = renderer.get_small_font()
         x = config.PAGE_MARGIN
         y = config.PAGE_MARGIN
@@ -127,14 +131,12 @@ class NetworkPage(Page):
         net = data["stats"].get("net")
         draw.text((x, y), "NETWORK", font=f, fill=1)
         draw.text((x, y + 12), f"iface: {h.get('iface') or '--'}", font=f, fill=1)
-        draw.text((x, y + 22), f"ip:    {h.get('ip') or '--'}", font=f, fill=1)
-        draw.text((x, y + 32), f"ssid:  {h.get('ssid') or '--'}", font=f, fill=1)
-        link = h.get("link_mbps")
-        draw.text((x, y + 42), f"link:  {_or_dash(link, '{} Mbps')}", font=f, fill=1)
+        draw.text((x, y + 23), f"ip:    {h.get('ip') or '--'}", font=f, fill=1)
+        draw.text((x, y + 34), f"ssid:  {h.get('ssid') or '--'}", font=f, fill=1)
         if net:
             rx_mb = net["rx_bytes"] // 1_000_000
             tx_mb = net["tx_bytes"] // 1_000_000
-            draw.text((x, y + 52), f"rx/tx: {rx_mb}M / {tx_mb}M", font=f, fill=1)
+            draw.text((x, y + 45), f"rx/tx: {rx_mb}M / {tx_mb}M", font=f, fill=1)
 
 
 # ---------- Page 4: Services ----------
@@ -143,26 +145,29 @@ class ServicesPage(Page):
     title = "SERVICES"
 
     def render(self, draw, data):
+        # Pillow default font is ~10 px tall, so 11 px pitch prevents overlap
+        # and lets us fit 5 services vertically with no title bar. If the
+        # list has more entries than fit, the tail is shown instead of the
+        # head so the daemon's own row (rpi-oled) stays visible at the bottom.
         f = renderer.get_small_font()
         x = config.PAGE_MARGIN
-        y = config.PAGE_MARGIN
-        draw.text((x, y), "SERVICES", font=f, fill=1)
         services = data["services"]
-        # Fit up to 8 services in the remaining 52 px below the title at 7px row pitch.
-        max_rows = 8
-        row_pitch = 7
-        row_y = y + 10
-        for s in services[:max_rows]:
+        row_pitch = 11
+        row_y = config.PAGE_MARGIN
+        max_rows = 5
+        # Keep the tail: user cares most about rpi-oled / rpi-hub which
+        # appear after user-registered services.
+        visible = services[-max_rows:] if len(services) > max_rows else services
+        for s in visible:
             status = s.get("status", "?")
             if status == "active":
-                renderer.draw_status_dot(draw, x + 2, row_y + 3, active=True, radius=2)
+                renderer.draw_status_dot(draw, x + 3, row_y + 5, active=True, radius=3)
             elif status == "inactive":
-                renderer.draw_status_dot(draw, x + 2, row_y + 3, active=False, radius=2)
+                renderer.draw_status_dot(draw, x + 3, row_y + 5, active=False, radius=3)
             else:
                 draw.text((x, row_y), "?", font=f, fill=1)
-            # Truncate service names that won't fit
             name = s["name"][:18]
-            draw.text((x + 8, row_y), name, font=f, fill=1)
+            draw.text((x + 10, row_y), name, font=f, fill=1)
             row_y += row_pitch
 
 

@@ -36,7 +36,11 @@ def load_services(path: Path = config.RPI_HUB_SERVICES_JSON) -> list[dict]:
     except (OSError, json.JSONDecodeError):
         pass  # fall through to synthetic only
 
+    existing_keys = {e["key"] for e in entries}
     for syn in config.SYNTHETIC_SERVICES:
+        if syn["key"] in existing_keys:
+            # Already registered in services.json — don't duplicate.
+            continue
         entries.append({
             "key": syn["key"],
             "name": syn["name"],
