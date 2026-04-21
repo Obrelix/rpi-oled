@@ -1,3 +1,4 @@
+import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -64,10 +65,11 @@ def test_parse_ssid_only_whitespace_returns_none():
 def test_get_primary_ip_opens_udp_and_reads_local():
     fake_sock = MagicMock()
     fake_sock.getsockname.return_value = ("192.168.1.201", 12345)
-    with patch("socket.socket", return_value=fake_sock):
+    with patch("socket.socket", return_value=fake_sock) as mock_cls:
         ip = host.get_primary_ip()
     assert ip == "192.168.1.201"
-    fake_sock.connect.assert_called_once()
+    mock_cls.assert_called_once_with(socket.AF_INET, socket.SOCK_DGRAM)
+    fake_sock.connect.assert_called_once_with(("8.8.8.8", 80))
     fake_sock.close.assert_called_once()
 
 
@@ -84,3 +86,49 @@ def test_parse_link_speed_returns_int():
 
 def test_parse_link_speed_returns_none_on_garbage():
     assert host.parse_link_speed("Unknown!\n") is None
+
+
+# ---------- HostInfoReader integration ----------
+
+import time
+
+
+def test_host_info_reader_wlan_populates_all_fields():
+    """End-to-end: get() returns all 6 keys, including SSID for a wlan iface."""
+    reader = host.HostInfoReader()
+    with patch("data.host.get_primary_interface", return_value="wlan0"), \
+         patch("data.host.get_hostname", return_value="rpi4"), \
+         patch("data.host.get_primary_ip", return_value="192.168.1.201"), \
+         patch("data.host.get_ssid", return_value="HomeNet"), \
+         patch("data.host.get_link_speed_mbps", return_value=54), \
+         patch("data.host.get_uptime_seconds", return_value=3661):
+        result = reader.get()
+    assert result == {
+        "hostname": "rpi4",
+        "iface": "wlan0",
+        "ip": "192.168.1.201",
+        "ssid": "HomeNet",
+        "link_mbps": 54,
+        "uptime_sec": 3661,
+    }
+
+
+def test_host_info_reader_eth_does_not_fetch_ssid():
+    """SSID must be None (and get_ssid never called) on ethernet ifaces."""
+    reader = host.HostInfoReader()
+    with patch("data.host.get_primary_interface", return_value="eth0"), \
+         patch("data.host.get_hostname", return_value="rpi4"), \
+         patch("data.host.get_primary_ip", return_value="10.0.0.5"), \
+         patch("data.host.get_ssid") as mock_ssid, \
+         patch("data.host.get_link_speed_mbps", return_value=1000), \
+         patch("data.host.get_uptime_seconds", return_value=100):
+        result = reader.get()
+    assert result["ssid"] is None
+    mock_ssid.assert_not_called()
+
+
+def test_host_info_reader_uses_cache_within_ttl():
+    reader = host.HostInfoReader()
+    reader._cache = {"sentinel": 1}
+    reader._cache_at = time.monotonic()
+    assert reader.get() is reader._cache
