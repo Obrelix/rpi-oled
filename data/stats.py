@@ -122,7 +122,6 @@ class StatsReader:
         self._cache: dict = {}
         self._cache_at: float = 0.0
         self._last_stat: Optional[str] = None
-        self._last_stat_at: float = 0.0
 
     def get(self, iface: str = "wlan0") -> dict:
         now = time.monotonic()
@@ -135,30 +134,38 @@ class StatsReader:
         return snapshot
 
     def _read_all(self, iface: str) -> dict:
-        mem = self._safe_parse(parse_meminfo, self.MEMINFO_PATH.read_text, fallback={})
-        temp = self._safe_parse(parse_thermal, self.THERMAL_PATH.read_text, fallback=None)
+        # --- memory ---
+        mem_content = self._read_file(self.MEMINFO_PATH)
+        mem = parse_meminfo(mem_content) if mem_content else {}
+
+        # --- temperature ---
+        thermal_content = self._read_file(self.THERMAL_PATH)
+        temp = parse_thermal(thermal_content) if thermal_content else None
+
+        # --- disk ---
         df_output = self._safe_run(["df", "-k", "/"], fallback="")
         disk = parse_df(df_output) if df_output else {"used_mb": 0, "total_mb": 0, "percent": 0}
-        net_content = self._safe_parse(lambda s=self.NET_DEV_PATH: s.read_text(), lambda: None, fallback="")
+
+        # --- network ---
+        net_content = self._read_file(self.NET_DEV_PATH)
         net = parse_net_bytes(net_content, iface) if net_content else None
 
-        now_stat = self._safe_parse(lambda s=self.STAT_PATH: s.read_text(), lambda: None, fallback="")
-        if self._last_stat is not None and now_stat:
+        # --- CPU (delta between consecutive snapshots) ---
+        now_stat = self._read_file(self.STAT_PATH)
+        if self._last_stat and now_stat:
             cpu_pct = parse_cpu_percent(self._last_stat, now_stat)
         else:
             cpu_pct = 0.0
         if now_stat:
             self._last_stat = now_stat
-            self._last_stat_at = time.monotonic()
 
         return {"mem": mem, "cpu_percent": cpu_pct, "temp_c": temp, "disk": disk, "net": net}
 
     @staticmethod
-    def _safe_parse(parser, reader, fallback):
+    def _read_file(path: Path, fallback: str = "") -> str:
         try:
-            content = reader()
-            return parser(content) if parser else content
-        except (OSError, ValueError):
+            return path.read_text()
+        except OSError:
             return fallback
 
     @staticmethod
