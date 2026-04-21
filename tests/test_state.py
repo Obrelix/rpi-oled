@@ -106,6 +106,14 @@ def test_short_press_in_confirm_returns_execute_signal():
     assert s.mode == Mode.PAGE
 
 
+def test_long_press_in_confirm_returns_to_menu():
+    s = AppState()
+    s.on_long_press()   # PAGE → MENU
+    s.on_short_press()  # MENU → CONFIRM (item 0)
+    s.on_long_press()   # CONFIRM → MENU
+    assert s.mode == Mode.MENU
+
+
 # ---------- Idle / dim / blank ----------
 
 def test_idle_under_threshold_is_full_contrast():
