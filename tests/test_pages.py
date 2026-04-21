@@ -10,7 +10,9 @@ def _canvas():
 
 
 def _pixels_lit(img: Image.Image) -> int:
-    return sum(1 for p in img.getdata() if p)
+    # Pillow 14 will remove getdata; get_flattened_data is the replacement.
+    data_fn = getattr(img, "get_flattened_data", img.getdata)
+    return sum(1 for p in data_fn() if p)
 
 
 SAMPLE_DATA = {

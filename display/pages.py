@@ -142,22 +142,28 @@ class NetworkPage(Page):
 class ServicesPage(Page):
     title = "SERVICES"
 
-    def render(self, draw: ImageDraw.ImageDraw, data: dict) -> None:
+    def render(self, draw, data):
         f = renderer.get_small_font()
         x = config.PAGE_MARGIN
         y = config.PAGE_MARGIN
         draw.text((x, y), "SERVICES", font=f, fill=1)
-        row_y = y + 12
-        for s in data["services"][:6]:  # spec: autoscroll if >6 -- simplified for now
+        services = data["services"]
+        # Fit up to 8 services in the remaining 52 px below the title at 7px row pitch.
+        max_rows = 8
+        row_pitch = 7
+        row_y = y + 10
+        for s in services[:max_rows]:
             status = s.get("status", "?")
             if status == "active":
-                renderer.draw_status_dot(draw, x + 3, row_y + 3, active=True)
+                renderer.draw_status_dot(draw, x + 2, row_y + 3, active=True, radius=2)
             elif status == "inactive":
-                renderer.draw_status_dot(draw, x + 3, row_y + 3, active=False)
+                renderer.draw_status_dot(draw, x + 2, row_y + 3, active=False, radius=2)
             else:
-                draw.text((x + 1, row_y), "?", font=f, fill=1)
-            draw.text((x + 10, row_y), s["name"], font=f, fill=1)
-            row_y += 9
+                draw.text((x, row_y), "?", font=f, fill=1)
+            # Truncate service names that won't fit
+            name = s["name"][:18]
+            draw.text((x + 8, row_y), name, font=f, fill=1)
+            row_y += row_pitch
 
 
 # ---------- Page 5: Clock ----------

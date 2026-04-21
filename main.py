@@ -82,9 +82,10 @@ class App:
         log.info("Action %d: %s (ok=%s)", idx, msg, ok)
 
     def _gather_data(self) -> dict:
+        host_data = self.host.get()
         return {
-            "host": self.host.get(),
-            "stats": self.stats.get(iface=self.host.get().get("iface") or "wlan0"),
+            "host": host_data,
+            "stats": self.stats.get(iface=host_data.get("iface") or "wlan0"),
             "services": self.services.get(),
             "now": dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }

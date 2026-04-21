@@ -5,7 +5,7 @@ echo "=== rpi-oled install ==="
 
 # System packages
 sudo apt update
-sudo apt install -y python3-pip python3-venv i2c-tools libjpeg-dev libopenjp2-7 fonts-dejavu-core
+sudo apt install -y python3-pip python3-venv i2c-tools libjpeg-dev libopenjp2-7 fonts-dejavu-core python3-lgpio
 
 # Enable I2C (non-interactive)
 sudo raspi-config nonint do_i2c 0
